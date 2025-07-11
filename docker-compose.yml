@@ -1,0 +1,127 @@
+version: '3.8'
+
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    healthcheck:
+      test: [ "CMD-SHELL", "echo 'healthy'" ]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
+  order_db:
+    image: postgres:13
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: order_db
+    ports:
+      - "15432:5432"   # maps container 5432 to host 15432
+    volumes:
+      - order_db_data:/var/lib/postgresql/data
+
+  payment_db:
+    image: postgres:13
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: payment_db
+    ports:
+      - "15433:5432"   # maps container 5432 to host 15433
+    volumes:
+      - payment_db_data:/var/lib/postgresql/data
+
+  delivery_db:
+    image: postgres:13
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: delivery_db
+    ports:
+      - "15434:5432"   # maps container 5432 to host 15434
+    volumes:
+      - delivery_db_data:/var/lib/postgresql/data
+
+  saga_db:
+    image: postgres:13
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: saga_db
+    ports:
+      - "15435:5432"   # maps container 5432 to host 15435
+    volumes:
+      - saga_db_data:/var/lib/postgresql/data
+
+  order_service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE_DIR: order_service
+    depends_on:
+      - order_db
+      - kafka
+    ports:
+      - "8000:8000"
+
+  payment_service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE_DIR: payment_service
+    depends_on:
+      - payment_db
+      - kafka
+    ports:
+      - "8001:8000"
+
+  delivery_service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE_DIR: delivery_service
+    depends_on:
+      - delivery_db
+      - kafka
+    ports:
+      - "8002:8000"
+
+  saga_view:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE_DIR: saga_view
+    depends_on:
+      - saga_db
+      - kafka
+    ports:
+      - "8003:8000"
+
+volumes:
+  order_db_data:
+  payment_db_data:
+  delivery_db_data:
+  saga_db_data:
