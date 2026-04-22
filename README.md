@@ -464,9 +464,3 @@ This allows testing individual services without Kafka dependency.
 - [ ] Implement event replay functionality
 - [ ] Add API rate limiting and authentication
 - [ ] Create web UI for saga monitoring
-
-## 📄 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
----
